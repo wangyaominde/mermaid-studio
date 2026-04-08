@@ -10,21 +10,11 @@ import {
 import { getTemplates } from './templates.js';
 import * as users from './users.js';
 import { handleMcpRequest } from './mcp.js';
-import * as oauth from './oauth.js';
 import { WebSocketDO } from './websocket.js';
 
 export { WebSocketDO };
 
 const app = new Hono();
-
-// --- CORS：对 /mcp 端点启用跨域支持，MCP 客户端需要 ---
-app.use('/mcp', cors({
-  origin: '*',
-  allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'Mcp-Session-Id'],
-  exposeHeaders: ['Mcp-Session-Id'],
-  maxAge: 86400,
-}));
 
 // --- Auto-migrate: create tables on first request ---
 let migrated = false;
@@ -47,15 +37,6 @@ async function ensureTables(db) {
       username TEXT PRIMARY KEY, password_hash TEXT NOT NULL, salt TEXT NOT NULL,
       token TEXT NOT NULL UNIQUE, workspace TEXT NOT NULL, created_at TEXT NOT NULL)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_token ON users(token)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS oauth_clients (
-      client_id TEXT PRIMARY KEY, client_secret TEXT,
-      redirect_uris TEXT NOT NULL, client_name TEXT,
-      created_at TEXT NOT NULL)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS oauth_codes (
-      code TEXT PRIMARY KEY, client_id TEXT NOT NULL,
-      redirect_uri TEXT NOT NULL, code_challenge TEXT NOT NULL,
-      user_token TEXT NOT NULL, workspace TEXT NOT NULL,
-      expires_at INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0)`),
   ]);
   migrated = true;
 }
@@ -125,18 +106,15 @@ app.use('/api/*', async (c, next) => {
   return next();
 });
 
-// --- MCP auth 中间件（OPTIONS 预检请求由 CORS 中间件处理，此处跳过） ---
+// --- MCP auth middleware ---
 app.use('/mcp', async (c, next) => {
-  if (c.req.method === 'OPTIONS') return next();
+  if (new URL(c.req.url).pathname === '/health') return next();
 
   const db = c.env.DB;
   const token = getTokenFromRequest(c);
 
   if (!token || !(await isValidToken(db, token))) {
-    const baseUrl = c.env.BASE_URL || new URL(c.req.url).origin;
-    return c.json({ error: 'Unauthorized' }, 401, {
-      'WWW-Authenticate': `Bearer resource_metadata="${baseUrl}/.well-known/oauth-protected-resource"`,
-    });
+    return c.json({ error: 'Unauthorized. Register a user and use the token.' }, 401);
   }
 
   c.set('workspace', await getWorkspace(db, token));
@@ -429,42 +407,6 @@ app.get('/api/diagrams/:id/export', async (c) => {
 // --- Templates ---
 app.get('/api/templates', (c) => {
   return c.json(getTemplates());
-});
-
-// --- OAuth 2.0 endpoints (MCP 认证) ---
-app.get('/.well-known/oauth-protected-resource', (c) => {
-  const baseUrl = c.env.BASE_URL || new URL(c.req.url).origin;
-  return c.json({
-    resource: baseUrl,
-    authorization_servers: [baseUrl],
-    bearer_methods_supported: ['header'],
-  });
-});
-
-app.get('/.well-known/oauth-authorization-server', (c) => {
-  const baseUrl = c.env.BASE_URL || new URL(c.req.url).origin;
-  return c.json(oauth.getMetadata(baseUrl));
-});
-
-app.post('/oauth/register', async (c) => {
-  const body = await c.req.json();
-  const result = await oauth.handleRegister(c.env.DB, body);
-  if (result.error) return c.json(result, 400);
-  return c.json(result, 201);
-});
-
-app.get('/oauth/authorize', async (c) => {
-  return oauth.handleAuthorizeGet(c);
-});
-
-app.post('/oauth/authorize', async (c) => {
-  return oauth.handleAuthorizePost(c);
-});
-
-app.post('/oauth/token', async (c) => {
-  const body = await c.req.parseBody();
-  const result = await oauth.handleToken(c.env.DB, body);
-  return c.json(result.body, result.status);
 });
 
 // --- MCP endpoint ---
