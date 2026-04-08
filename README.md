@@ -26,16 +26,18 @@ After registration, click the **MCP** button in the top bar to get a ready-to-pa
 {
   "mcpServers": {
     "mermaid-studio": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote@latest", "https://your-worker.workers.dev/mcp"]
+      "url": "https://your-worker.workers.dev/mcp",
+      "headers": {
+        "Authorization": "Bearer your-token"
+      }
     }
   }
 }
 ```
 
-Uses [mcp-remote](https://www.npmjs.com/package/mcp-remote) as a bridge. First connect opens browser for OAuth login — no token needed. Each user gets their own workspace — diagrams are isolated, and the AI only sees yours.
+Each user gets their own workspace — diagrams are isolated, and the AI only sees yours.
 
-> **China / restricted network users:** `mcp-remote` uses Node.js `fetch`, which does **not** read system proxy settings or `HTTPS_PROXY` environment variables. If you cannot reach `*.workers.dev` directly, you will need to use a VPN/proxy tool with **enhanced/global mode** that intercepts all system traffic (e.g., Surge Enhanced Mode, Clash TUN mode), or a transparent proxy at the network level.
+> **Note for China / restricted network users:** Cloudflare Workers (`*.workers.dev`) may not be directly accessible in certain regions. You will need a VPN/proxy tool with **enhanced/global mode** that intercepts all system traffic (e.g., Surge Enhanced Mode, Clash TUN mode), as most proxy tools only cover browser traffic and not CLI/Node.js processes.
 
 ## Features
 
@@ -114,7 +116,6 @@ workers/src/
   index.js          Hono router, API routes, auth middleware
   diagrams.js       D1 CRUD for diagrams
   users.js          User auth (PBKDF2 hashing)
-  oauth.js          OAuth 2.0 + PKCE for MCP clients
   mcp.js            MCP protocol handler (JSON-RPC)
   websocket.js      Durable Object for real-time sync
   templates.js      9 diagram templates
