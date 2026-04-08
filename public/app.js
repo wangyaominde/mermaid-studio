@@ -185,6 +185,16 @@ function showAuthModal() {
 }
 
 let turnstileWidgetId = null;
+let turnstileScriptLoaded = false;
+
+function loadTurnstileScript() {
+  if (turnstileScriptLoaded || !window.__TURNSTILE_SITE_KEY__) return;
+  turnstileScriptLoaded = true;
+  const s = document.createElement('script');
+  s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+  s.async = true;
+  document.head.appendChild(s);
+}
 
 function switchAuthTab(tab) {
   document.querySelectorAll('.auth-tab').forEach(t => {
@@ -195,7 +205,10 @@ function switchAuthTab(tab) {
   document.getElementById('login-error').textContent = '';
   document.getElementById('register-error').textContent = '';
 
-  // Render Turnstile widget on register tab (only if site key is configured)
+  // Load and render Turnstile widget on register tab (only if site key is configured)
+  if (tab === 'register' && window.__TURNSTILE_SITE_KEY__) {
+    loadTurnstileScript();
+  }
   if (tab === 'register' && typeof turnstile !== 'undefined' && window.__TURNSTILE_SITE_KEY__) {
     const container = document.getElementById('turnstile-container');
     if (container && turnstileWidgetId === null) {
@@ -291,9 +304,9 @@ async function handleRegister() {
     return;
   }
 
-  // Get Turnstile token
+  // Get Turnstile token (only if site key is configured)
   let turnstileToken = '';
-  if (typeof turnstile !== 'undefined' && turnstileWidgetId !== null) {
+  if (window.__TURNSTILE_SITE_KEY__ && typeof turnstile !== 'undefined' && turnstileWidgetId !== null) {
     turnstileToken = turnstile.getResponse(turnstileWidgetId);
     if (!turnstileToken) {
       errorEl.textContent = 'Please complete the verification.';
