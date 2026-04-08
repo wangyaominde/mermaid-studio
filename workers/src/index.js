@@ -16,6 +16,36 @@ export { WebSocketDO };
 
 const app = new Hono();
 
+// --- Auto-migrate: create tables on first request ---
+let migrated = false;
+async function ensureTables(db) {
+  if (migrated) return;
+  await db.batch([
+    db.prepare(`CREATE TABLE IF NOT EXISTS diagrams (
+      id TEXT PRIMARY KEY, workspace TEXT NOT NULL, name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'flowchart', code TEXT NOT NULL,
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_diagrams_workspace ON diagrams(workspace)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_diagrams_updated ON diagrams(workspace, updated_at)`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS diagram_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, diagram_id TEXT NOT NULL,
+      workspace TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL,
+      code TEXT NOT NULL, created_at TEXT NOT NULL,
+      FOREIGN KEY (diagram_id) REFERENCES diagrams(id) ON DELETE CASCADE)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_versions_diagram ON diagram_versions(diagram_id)`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS users (
+      username TEXT PRIMARY KEY, password_hash TEXT NOT NULL, salt TEXT NOT NULL,
+      token TEXT NOT NULL UNIQUE, workspace TEXT NOT NULL, created_at TEXT NOT NULL)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_token ON users(token)`),
+  ]);
+  migrated = true;
+}
+
+app.use('*', async (c, next) => {
+  if (c.env.DB) await ensureTables(c.env.DB);
+  return next();
+});
+
 // --- Config helpers ---
 
 function getTokenFromRequest(c) {
