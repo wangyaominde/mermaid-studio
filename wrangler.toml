@@ -9,7 +9,6 @@ binding = "ASSETS"
 not_found_handling = "none"
 
 [vars]
-BASE_URL = ""
 # TURNSTILE_SITE_KEY = ""  # Optional: your Cloudflare Turnstile site key
 
 [[d1_databases]]
