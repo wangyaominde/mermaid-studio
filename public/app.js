@@ -497,16 +497,14 @@ function getMcpEndpoint() {
 }
 
 function generateMcpConfigs() {
-  const token = getToken();
   const endpoint = getMcpEndpoint();
 
+  // All clients use mcp-remote as bridge (OAuth auto-auth)
   const claude = {
     mcpServers: {
       'mermaid-studio': {
-        url: endpoint,
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        command: 'npx',
+        args: ['-y', 'mcp-remote@latest', endpoint]
       }
     }
   };
@@ -514,10 +512,8 @@ function generateMcpConfigs() {
   const claudeCode = {
     mcpServers: {
       'mermaid-studio': {
-        url: endpoint,
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        command: 'npx',
+        args: ['-y', 'mcp-remote@latest', endpoint]
       }
     }
   };
@@ -525,15 +521,28 @@ function generateMcpConfigs() {
   const cursor = {
     mcpServers: {
       'mermaid-studio': {
-        url: endpoint,
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        command: 'npx',
+        args: ['-y', 'mcp-remote@latest', endpoint]
       }
     }
   };
 
   return { claude, 'claude-code': claudeCode, cursor };
+}
+
+function copyMcpEntry() {
+  const endpoint = getMcpEndpoint();
+  const entry = {
+    'mermaid-studio': {
+      command: 'npx',
+      args: ['-y', 'mcp-remote@latest', endpoint]
+    }
+  };
+  const text = JSON.stringify(entry, null, 2);
+  const inner = text.split('\n').slice(1, -1).map(l => l.slice(2)).join('\n');
+  navigator.clipboard.writeText(inner).then(() => {
+    toast('Copied! Paste inside "mcpServers": { } in your config');
+  });
 }
 
 let mcpTokenRevealed = false;
@@ -557,15 +566,10 @@ function copyMcpToken() {
 }
 
 function showMcpConfigModal() {
-  mcpTokenRevealed = false;
-  const token = getToken();
   const endpoint = getMcpEndpoint();
   const configs = generateMcpConfigs();
 
-  document.getElementById('mcp-token-display').textContent = maskToken(token);
-  document.getElementById('mcp-token-reveal-btn').textContent = 'Show';
   document.getElementById('mcp-endpoint-display').textContent = endpoint;
-
   document.getElementById('mcp-code-claude').textContent = JSON.stringify(configs.claude, null, 2);
   document.getElementById('mcp-code-claude-code').textContent = JSON.stringify(configs['claude-code'], null, 2);
   document.getElementById('mcp-code-cursor').textContent = JSON.stringify(configs.cursor, null, 2);

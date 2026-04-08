@@ -210,18 +210,25 @@
   <div class="modal-overlay" id="mcp-modal" style="display:none" onclick="if(event.target===this)closeModal('mcp-modal')">
     <div class="modal modal-wide">
       <h2>MCP Configuration</h2>
-      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px">Copy the configuration below to connect AI tools to Mermaid Studio via MCP.</p>
+      <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px">Connect AI tools to Mermaid Studio via MCP (OAuth auto-auth, no token needed).</p>
+
+      <div class="mcp-install-section" style="margin-bottom:20px;padding:16px;background:var(--bg-tertiary);border-radius:10px">
+        <p style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:10px">Quick Setup</p>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <button class="btn btn-primary" onclick="copyMcpEntry()" style="white-space:nowrap">
+            Copy Server Entry
+          </button>
+          <span style="font-size:13px;color:var(--text-secondary)">Paste inside <code style="font-size:12px">"mcpServers": { }</code> in your config</span>
+        </div>
+        <ol style="font-size:12px;color:var(--text-tertiary);margin:0;padding-left:18px;line-height:1.8">
+          <li><b>Claude Desktop</b>: Settings &rarr; Developer &rarr; Edit Config &rarr; paste &rarr; restart</li>
+          <li><b>Claude Code</b>: paste into project <code style="font-size:11px">.mcp.json</code></li>
+          <li><b>Cursor</b>: paste into <code style="font-size:11px">.cursor/mcp.json</code></li>
+        </ol>
+        <p style="font-size:12px;color:var(--text-tertiary);margin-top:8px">Requires Node.js. First connect will open browser for OAuth login, no token needed.</p>
+      </div>
 
       <div class="mcp-section">
-        <div class="mcp-info-row">
-          <span class="mcp-label">API Token</span>
-          <div class="mcp-copy-row">
-            <code class="mcp-value" id="mcp-token-display">—</code>
-            <button class="btn btn-sm" id="mcp-token-reveal-btn" onclick="toggleTokenReveal()">Show</button>
-            <button class="btn btn-sm btn-accent" onclick="copyMcpToken()">Copy</button>
-            <button class="btn btn-sm btn-danger" onclick="regenerateToken()" title="Regenerate token (invalidates the old one)">Regenerate</button>
-          </div>
-        </div>
         <div class="mcp-info-row">
           <span class="mcp-label">MCP Endpoint</span>
           <div class="mcp-copy-row">
@@ -247,7 +254,7 @@
 
       <div class="mcp-config-block" id="mcp-config-claude-code" style="display:none">
         <div class="mcp-config-header">
-          <span>claude_code_config.json (or .mcp.json)</span>
+          <span>.mcp.json</span>
           <button class="btn btn-sm btn-primary" onclick="copyMcpConfig('claude-code')">Copy</button>
         </div>
         <pre class="mcp-config-code" id="mcp-code-claude-code"></pre>
