@@ -1,20 +1,52 @@
 # Mermaid Studio
 
-Online Mermaid.js diagram editor with MCP support, deployed on Cloudflare Workers.
+Let AI create diagrams for you. Mermaid Studio is a diagram editor with a built-in [MCP](https://modelcontextprotocol.io/) server — connect Claude, Cursor, or any MCP-compatible AI and say _"draw me a flowchart"_.
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wangyaominde/mermaid-studio)
 
+## Why MCP?
+
+Traditional diagram tools require manual drawing. With MCP, AI tools can **create, edit, and manage diagrams programmatically** through a standard protocol:
+
+```
+You: "Draw a sequence diagram for OAuth2 login flow"
+AI:  creates the diagram → you see it instantly in your browser
+You: "Add error handling paths"
+AI:  updates the same diagram → preview refreshes in real-time
+```
+
+The AI gets 7 tools (`create_diagram`, `update_diagram`, `get_diagram`, `list_diagrams`, `delete_diagram`, `export_diagram`, `get_templates`) and can work with all 9 Mermaid diagram types.
+
+### Connect in 30 Seconds
+
+After registration, click the **MCP** button in the top bar to get a ready-to-paste config:
+
+**Claude Desktop / Claude Code / Cursor:**
+```json
+{
+  "mcpServers": {
+    "mermaid-studio": {
+      "url": "https://your-worker.workers.dev/mcp",
+      "headers": {
+        "Authorization": "Bearer your-token"
+      }
+    }
+  }
+}
+```
+
+Each user gets their own workspace — diagrams are isolated, and the AI only sees yours.
+
 ## Features
 
-- Code editor (CodeMirror) + live Mermaid preview
-- 9 diagram types (flowchart, sequence, class, state, ER, gantt, pie, swimlane, mindmap)
-- Real-time collaboration via WebSocket (Durable Objects)
-- MCP endpoint for AI tools (Claude, Cursor, etc.)
-- User registration with workspace isolation
-- Version history (50 versions per diagram)
-- Export SVG / PNG
-- Dark mode
-- Cloudflare Turnstile anti-bot protection (optional)
+- **MCP server** — AI creates/edits diagrams via standard protocol, real-time sync to browser
+- **Live editor** — CodeMirror + Mermaid.js preview, 9 diagram types
+- **Multi-user** — registration, workspace isolation, token-based auth
+- **Real-time** — WebSocket updates via Durable Objects
+- **Version history** — 50 versions per diagram, one-click restore
+- **Export** — SVG / PNG / batch export
+- **Dark mode**
+- **Cloudflare Turnstile** — optional anti-bot protection for registration
 
 ## Deploy Your Own
 
@@ -52,7 +84,7 @@ Create a Turnstile widget at [Cloudflare Dashboard](https://dash.cloudflare.com/
 npx wrangler secret put TURNSTILE_SECRET_KEY
 ```
 
-Without Turnstile configured, registration works normally without human verification.
+Without Turnstile, registration works without human verification.
 
 ## Local Development
 
@@ -61,76 +93,35 @@ npm run db:migrate:local
 npm run dev
 ```
 
-## MCP Configuration
-
-After registration, click the **MCP** button in the top bar to get your config. Example:
-
-```json
-{
-  "mcpServers": {
-    "mermaid-studio": {
-      "url": "https://your-worker.workers.dev/mcp",
-      "headers": {
-        "Authorization": "Bearer your-token"
-      }
-    }
-  }
-}
-```
-
-### MCP Tools
+## MCP Tools
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| `create_diagram` | Create diagram | `name`, `type?`, `code` |
-| `update_diagram` | Update diagram | `diagram_id`, `code`, `name?` |
-| `get_diagram` | Get diagram | `diagram_id` |
-| `list_diagrams` | List all | - |
-| `delete_diagram` | Delete diagram | `diagram_id` |
-| `export_diagram` | Export diagram | `diagram_id`, `format?` |
-| `get_templates` | Get templates | - |
+| `create_diagram` | Create a new diagram | `name`, `type?`, `code` |
+| `update_diagram` | Update existing diagram | `diagram_id`, `code`, `name?` |
+| `get_diagram` | Get diagram details | `diagram_id` |
+| `list_diagrams` | List all diagrams | - |
+| `delete_diagram` | Delete a diagram | `diagram_id` |
+| `export_diagram` | Export with URL | `diagram_id`, `format?` |
+| `get_templates` | Get starter templates | - |
 
-## API
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/api/auth/register` | No | Register |
-| POST | `/api/auth/login` | No | Login |
-| GET | `/api/auth/me` | Yes | Current user |
-| POST | `/api/auth/change-password` | Yes | Change password |
-| POST | `/api/auth/regenerate-token` | Yes | Regenerate API token |
-| POST | `/api/diagrams` | Yes | Create diagram |
-| GET | `/api/diagrams` | Yes | List diagrams |
-| GET | `/api/diagrams/:id` | Yes | Get diagram |
-| PUT | `/api/diagrams/:id` | Yes | Update diagram |
-| DELETE | `/api/diagrams/:id` | Yes | Delete diagram |
-| GET | `/api/diagrams/:id/versions` | Yes | Version history |
-| GET | `/api/diagrams/:id/export` | No | Export (public) |
-| GET | `/api/templates` | No | Templates |
-| ALL | `/mcp` | Yes | MCP endpoint |
-| GET | `/ws` | Yes | WebSocket |
+**Supported diagram types:** flowchart, sequence, class, state, ER, gantt, pie, swimlane, mindmap
 
 ## Architecture
 
 ```
-wrangler.toml              # Cloudflare Workers config
 workers/src/
-  index.js                 # Hono router + all API routes
-  diagrams.js              # D1 CRUD for diagrams
-  users.js                 # D1 user auth (PBKDF2)
-  templates.js             # 9 diagram templates
-  mcp.js                   # MCP protocol (JSON-RPC)
-  websocket.js             # Durable Object for WebSocket
-public/
-  index.html               # SPA
-  app.js                   # Frontend logic
-  style.css                # Styles
-  vendor/                  # CodeMirror, Mermaid.js
-migrations/
-  0001_init.sql            # D1 schema
+  index.js          Hono router, API routes, auth middleware
+  diagrams.js       D1 CRUD for diagrams
+  users.js          User auth (PBKDF2 hashing)
+  mcp.js            MCP protocol handler (JSON-RPC)
+  websocket.js      Durable Object for real-time sync
+  templates.js      9 diagram templates
+public/             SPA frontend (CodeMirror + Mermaid.js)
+migrations/         D1 database schema
 ```
 
-**Infrastructure:** Cloudflare Workers + D1 (SQLite) + Durable Objects + Assets
+**Stack:** Cloudflare Workers + D1 + Durable Objects + Hono
 
 ## License
 
