@@ -1,0 +1,28 @@
+name = "mermaid-studio"
+main = "workers/src/index.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "none"
+
+[vars]
+BASE_URL = ""
+# TURNSTILE_SITE_KEY = ""  # Optional: your Cloudflare Turnstile site key
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mermaid-studio-db"
+database_id = ""  # Run: npx wrangler d1 create mermaid-studio-db, then paste the ID here
+migrations_dir = "migrations"
+
+[durable_objects]
+bindings = [
+  { name = "WEBSOCKET", class_name = "WebSocketDO" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["WebSocketDO"]
